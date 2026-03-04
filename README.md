@@ -1,371 +1,302 @@
 # Retail Data Engineering Pipeline
 
+Analytics engineering pipeline built with **dbt** and **Google BigQuery** to transform raw retail and marketing campaign data into reliable financial analytics datasets.
+This project implements a layered data modeling architecture to clean, transform, and aggregate raw operational data into business-ready financial reporting tables used by finance teams.
 
-A modular **analytics engineering pipeline built with dbt and Google BigQuery** to transform raw retail transaction data into reliable financial analytics datasets.
+
+
+## Project Overview
+Raw transactional data and marketing campaign data are stored in BigQuery in multiple operational tables.
+However, these raw datasets are not suitable for analytical reporting because:
+- schemas are inconsistent
+- business metrics are not precomputed
+- multiple tables must be joined
+- marketing costs are stored separately from sales data
+This project builds a **dbt analytics engineering pipeline** that:
+- standardizes raw datasets
+- computes financial metrics
+- integrates marketing campaign costs
+- ensures data quality through tests
+- produces analytics-ready finance datasets
+The final output enables the finance team to monitor **daily and monthly business performance.**
+
+The pipeline produces finance-ready datasets that combine sales performance and marketing campaign costs, enabling financial reporting and campaign profitability analysis.
 
 ---
-
-# Project Overview
-
-This project implements a **modular data transformation pipeline** that converts raw retail transaction data into **business-ready financial analytics tables**.
-
-The pipeline follows modern **analytics engineering principles** and organizes transformations into layered data models that ensure data quality, traceability, and maintainability.
-
-The final output enables finance teams to monitor **daily business performance** through key financial indicators.
 
 ## Key Metrics Produced
+The pipeline computes the following financial and operational metrics:
 
-- Revenue
-- Purchase Cost
-- Margin
-- Operational Margin
-- Shipping Cost
-- Logistics Cost
-- Average Basket Value
-- Number of Transactions
+Revenue
+Purchase Cost
+Operational Margin
+Margin
+Ads Margin
+Shipping Fee
+Logistics Cost
+Average Basket Value
+Number of Orders
+Ad Clicks
+Marketing Campaign Cost
+Ad Impressions
+
+Metric definitions:
+```
+Purchase Cost = quantity × purchase_price
+
+Margin = revenue − purchase_cost
+
+Operational Margin =
+margin + shipping_fee − log_cost − ship_cost
+
+Ads Margin =
+operational_margin − ads_cost
+```
 
 ---
 
-# Problem Statement
-
-The finance team requires a reliable dataset to monitor **daily operational performance.**
-However, raw transactional data stored in BigQuery presents several challenges:
-
--Multiple tables must be joined together
--Business metrics are not pre-computed
--Raw tables contain inconsistent schemas
--Data structures are not optimized for analytical queries
-To address these issues, this project builds a layered dbt pipeline that:
--standardizes raw data
--computes financial metrics
--ensures data quality
--provides analytics-ready datasets for stakeholders
-
---
-
-# Architecture
-
-The project follows a **layered analytics engineering architecture**:
+## Architecture
+The project follows a modern analytics engineering architecture using dbt.
 
 
 ```
        ┌──────────┐
-       │   RAW    │
+       │   RAW    │ Operational source tables stored in BigQuery.
        └────┬─────┘
             ↓
        ┌──────────┐
-       │ STAGING  │
+       │ STAGING  │ Standardizes raw data by renaming columns, casting data types, and cleaning fields.
        └────┬─────┘
             ↓
     ┌───────────────┐
-    │ INTERMEDIATE  │
+    │ INTERMEDIATE  │ Computes business metrics and integrates datasets.
     └───────┬───────┘
             ↓
        ┌──────────┐
-       │   MART   │
+       │   MART   │ Produces analytics-ready datasets used by finance teams.
        └──────────┘
 ```
 
+---
 
-Each layer has a specific responsibility in the data transformation process.
+## Data Lineage
+The pipeline integrates transactional sales data with marketing campaign data.
+
+```
+Raw Sources
+├── sales
+├── product
+├── ship
+├── adwords
+├── bing
+├── criteo
+└── facebook
+
+Staging Models
+├── stg_raw__sales
+├── stg_raw__product
+├── stg_raw__ship
+├── stg_raw__adwords
+├── stg_raw__bing
+├── stg_raw__criteo
+└── stg_raw__facebook
+
+Intermediate Models
+├── int_sales_margin
+├── int_orders_operational
+├── int_campaigns
+└── int_campaigns_day
+
+Mart Models
+├── finance_days
+├── finance_campaigns_day
+└── finance_campaigns_month
+```
+
+The lineage graph below illustrates how raw operational and marketing data flows through staging and intermediate models before producing finance reporting datasets.
+
+<img width="901" height="360" alt="image" src="https://github.com/user-attachments/assets/c8a6537b-8a87-42e9-a061-3f59c1bd2d61" />
 
 ---
 
-# Source Data
-The pipeline consumes raw transactional data stored in the **BigQuery dataset:**
+## Data Models
+Intermediate models contain the core business logic of the pipeline and calculate key financial metrics used in downstream mart models.
+### Staging Layer
+The staging layer standardizes raw datasets and prepares them for downstream transformations.
 
+Typical transformations include:
+
+- Column renaming
+- Data type casting
+- Schema normalization
+- Basic data cleaning
+
+Examples:
 
 ```
-gz_raw_data
+pdt_id → products_id
+purchse_price → purchase_price
+ads_cost → FLOAT64
+camPGN_name → campaign_name
 ```
 
 
+### Intermediate Layer
 
-**raw_gz_sales**
+Intermediate models compute business metrics and combine datasets across domains.
 
-Order-level product transaction data.
-
-Key fields:
--orders_id
--pdt_id
--date_date
--quantity
--revenue
-
-**raw_gz_product**
-
-Product information including purchase prices.
-
-Key fields:
--products_id
--purchase_price
-
-**raw_gz_ship**
-
-Shipping and logistics cost information.
-
-Key fields:
--orders_id
--shipping_fee
--log_cost
--ship_cost
-
-
----
-
-# Data Modeling Strategy
-
-The project uses a **three-stage transformation strategy** commonly used in analytics engineering.
-
-## Staging Models
-The staging layer standardizes raw data and prepares it for downstream transformations.
-
-Models:
-
-- `stg_raw__sales`
-- `stg_raw__product`
-- `stg_raw__ship`
-
-Responsibilities:
-
-- column renaming
-- data type casting
-- schema normalization
-- basic data cleaning
-- preparation for joins
-
----
-
-## Intermediate Models
-
-Intermediate models compute reusable metrics and simplify transformation logic.
-
-### `int_sales_margin`
-
-Calculates **product-level margin**.
-
-Formula:
- 
-```
-purchase_cost = quantity × purchase_price
+#### Product-Level Margin
+```int_sales_margin```
+ ```
+ purchase_cost = quantity × purchase_price
 margin = revenue − purchase_cost
-```
+ ```
 
-
----
-
-### `int_orders_margin`
-
-Aggregates product-level metrics **to order level**.
-
-Outputs:
-
-- order revenue
-- quantity
-- purchase cost
-- margin
-
----
-
-### `int_orders_operational`
-
-Computes **operational margin** including logistics costs.
-
-Formula:
-
+#### Order-Level Operational Margin
+```int_orders_operational```
 ```
 operational_margin =
-margin + shipping_fee − (log_cost + ship_cost)
+margin + shipping_fee − log_cost − ship_cost
 ```
+
+#### Marketing Campaign Integration
+```int_campaigns```
+Combines marketing data from multiple advertising platforms:
+```
+- Google Adwords
+- Bing Ads
+- Criteo
+- Facebook Ads
+```
+Implemented using **UNION ALL** across standardized staging models.
+
+
+#### Daily Campaign Aggregation
+```int_campaigns_day```
+Aggregates marketing campaign metrics at the daily level.
+
+
+### Mart Layer
+Mart models provide analytics-ready datasets for business stakeholders.
+
+#### Finance Daily Metrics
+```finance_days```
+Daily financial performance metrics.
+
+
+#### Finance Campaign Daily Metrics
+```finance_campaigns_day```
+Combines finance and marketing metrics.
+New metric:
+```
+ads_margin = operational_margin − ads_cost
+```
+
+
+#### Finance Campaign Monthly Metrics
+```finance_campaigns_month```
+Monthly aggregated financial performance including marketing costs.
 
 ---
 
-## Mart Models
-
-The **mart layer** produces analytics-ready datasets designed for business stakeholders.
-
-### `finance_days`
-
-This table provides **daily financial KPIs** used by the finance dashboard.
-
-Daily metrics include:
-
-- Revenue
-- Margin
-- Operational Margin
-- Purchase Cost
-- Shipping Fee
-- Logistics Cost
-- Number of Transactions
-- Average Basket Value
-- Quantity Sold
-
----
-
-# Data Model Flow
-
-
-```
-raw.sales
-raw.product
-raw.ship
-↓
-stg_raw__sales
-stg_raw__product
-stg_raw__ship
-↓
-int_sales_margin
-↓
-int_orders_margin
-↓
-int_orders_operational
-↓
-finance_days
-```
-
-This structure ensures **clear lineage and modular transformations**.
-
-
-
-
----
-
-# Data Quality Strategy
-
-Data quality validation is implemented using **dbt tests defined in** schema.yml.
-Implemented tests include:
+## Data Quality
+The project implements data quality checks using dbt tests.
+These tests are defined in the schema.yml file and executed during `dbt build`. 
+Examples include:
 - not_null
 - unique
 - relationships
-- composite key validation
-  
-Examples:
-- (orders_id, pdt_id) uniqueness validation in the sales table
-- foreign key validation between orders and product tables
-
-# Source Freshness Monitoring
-
-dbt **source freshness checks** monitor upstream raw data tables.
-These checks detect:
-- stale data sources
-- delayed data ingestion
-- 
-This ensures the analytics layer is always based on **up-to-date operational data.**
-
-# Data Lineage
-dbt automatically generates a **lineage graph** that shows dependencies between models.
-
-This allows engineers and analysts to:
-
-- trace each metric back to its raw data source
-- debug transformation issues
-- understand pipeline structure
-  
-The transformation pipeline follows:
-
-```
-raw → staging → intermediate → mart
-```
-
-<img width="1148" height="208" alt="image" src="https://github.com/user-attachments/assets/2362f90d-f89f-4286-9f3a-9ab86d682a75" />
-
-
-# Key Business Metrics
-
-### Revenue
-
-Total amount paid by customers.
+- source freshness
+These tests ensure:
+- primary keys are valid
+- relationships between models are consistent
+- source data freshness can be monitored
 
 ---
 
-### Purchase Cost
+## Materialization Strategy
 
-Formula: 
-
+Different materialization strategies are used depending on the layer:
 ```
-purchase_cost = quantity × purchase_price
+Layer	Materialization
+Staging	View
+Intermediate	View
+Mart	Table
 ```
-
-### Margin
-Formula:
-
-```
-margin = revenue − purchase_cost
-```
-
-### Operational Margin
-Formula:
-
-```
-operational_margin =
-margin + shipping_fee − (log_cost + ship_cost)
-```
-
-### Average Basket Value
-Formula:
-
-```
-average_basket = revenue / number_of_transactions
-```
+Mart models are materialized as **tables** because they are frequently queried by analytics dashboards.
 
 ---
 
 ## Project Structure
-
 ```
 models
 │
 ├── staging
-│   └── raw
-│       ├── stg_raw__sales.sql
-│       ├── stg_raw__product.sql
-│       └── stg_raw__ship.sql
+│   ├── stg_raw__sales.sql
+│   ├── stg_raw__product.sql
+│   ├── stg_raw__ship.sql
+│   ├── stg_raw__adwords.sql
+│   ├── stg_raw__bing.sql
+│   ├── stg_raw__criteo.sql
+│   └── stg_raw__facebook.sql
 │
 ├── intermediate
 │   ├── int_sales_margin.sql
-│   ├── int_orders_margin.sql
-│   └── int_orders_operational.sql
+│   ├── int_orders_operational.sql
+│   ├── int_campaigns.sql
+│   └── int_campaigns_day.sql
 │
-└── mart
-    └── finance_days.sql
-```
+└── marts
+    └── finance
+        ├── finance_days.sql
+        ├── finance_campaigns_day.sql
+        └── finance_campaigns_month.sql
 
+
+```
 
 ---
 
+#### Data Sources
 
-## Technologies
+The pipeline integrates operational sales data with marketing campaign data.
 
-- **dbt**
-- **Google BigQuery**
-- **SQL**
-- **dbt-utils**
+Sales datasets
+- raw.sales
+- raw.product
+- raw.ship
+
+Marketing datasets
+- raw.adwords
+- raw.bing
+- raw.criteo
+- raw.facebook
 
 ---
 
-## Running the Project
+## Technologies Used
+- dbt (Data Build Tool)
+- Google BigQuery
+- SQL
+- Analytics Engineering
+- Data Warehousing
 
-### Install dependencies
+---
 
-
-```
-dbt deps
-```
-
-### Run the pipeline
-
+## Pipeline Execution
+Run models only:
 ```
 dbt run
 ```
-
-### Run tests
-
+The pipeline can be executed using:
 ```
-dbt test
+dbt build
 ```
-
-### Generate documentation
-
+Selective model execution example:
+```
+dbt build --select finance_campaigns_day
+```
+Generate documentation:
 ```
 dbt docs generate
 dbt docs serve
@@ -373,41 +304,23 @@ dbt docs serve
 
 ---
 
-## Project Goals
-
-This project demonstrates:
-
-- Modular data transformation pipelines  
-- Analytics engineering best practices  
-- Layered data modeling  
-- Business metric computation  
-- Data quality validation using dbt  
+## Production Deployment
+The project includes a production deployment workflow using dbt Cloud:
+- pull request workflow
+- production environment
+- scheduled job execution
+- automated documentation generation
 
 ---
 
-## Engineering Principles
+## Use Case
+This pipeline enables finance teams to analyze:
+- daily revenue performance
+- marketing campaign profitability
+- operational margins
+- advertising ROI
+By integrating sales and marketing datasets into a unified analytical model.
 
-This pipeline is designed based on the following principles:
-
-**Modular transformations**
-Each layer performs a specific transformation task.
-
-**Data reliability**
-dbt tests ensure invalid data does not propagate to analytics tables.
-
-**Traceable lineage**
-Data lineage makes the pipeline transparent and debuggable.
-
-**Business-friendly datasets**
-Mart models provide simplified datasets for business stakeholders.
-
----
-
-## Author
-
-Senem Yılmaz  
-Industrial Engineering Graduate  
-Data Engineering & Analytics Engineering
-
-
-
+### Author
+Senem Yılmaz
+Data Engineering & Analytics Engineering Projects
