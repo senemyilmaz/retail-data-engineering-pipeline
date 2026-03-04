@@ -74,3 +74,17 @@ sources:
 
       - name: facebook
         identifier: raw_gz_facebook
+
+models:
+  - name: finance_campaigns_day
+    description: "Global KPI table combining finance and marketing metrics."
+    columns:
+      - name: ads_margin
+        description: "Operational margin after advertising cost (operational_margin - ads_cost)."
+        tests:
+          - not_null
+
+      - name: average_basket
+        description: "Her gün için ortalama sepet tutarı."
+        tests:
+          - not_null
