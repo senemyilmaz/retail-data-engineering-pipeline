@@ -16,15 +16,32 @@ sources:
             count: 90
             period: day
 
+        # Table-level tests
+        tests:
+          - dbt_utils.unique_combination_of_columns:
+              combination_of_columns:
+                - orders_id
+                - pdt_id
+
         columns:
           - name: date_date
             description: date of purchase
 
           - name: orders_id
             description: foreign key to ship
+            tests:
+              - not_null
+              - relationships:
+                  to: source('raw', 'ship')
+                  field: orders_id
 
           - name: pdt_id
             description: foreign key to product
+            tests:
+              - not_null
+              - relationships:
+                  to: source('raw', 'product')
+                  field: products_id
 
           - name: revenue
             description: the amount paid by the customer to purchase the product. revenue = quantity * selling_price
