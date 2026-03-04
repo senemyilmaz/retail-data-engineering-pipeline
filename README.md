@@ -257,7 +257,7 @@ models
 
 ---
 
-#### Data Sources
+## Data Sources
 
 The pipeline integrates operational sales data with marketing campaign data.
 
