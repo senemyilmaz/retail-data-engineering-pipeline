@@ -18,7 +18,7 @@ clean-targets:
 
 models:
   my_new_project:
-    +materialized: view   # default for the project
+    +materialized: view
 
     staging:
       +materialized: view
