@@ -4,79 +4,73 @@ sources:
   - name: raw
     schema: gz_raw_data
     tables:
-
       - name: sales
         identifier: raw_gz_sales
-        description: sales of Greenweez / we have one row per product_id found in each orders_id
-
-        # Freshness testing
-        loaded_at_field: "CAST(date_date AS TIMESTAMP)"
-        freshness:
-          warn_after:
-            count: 90
-            period: day
-
-        # Table-level tests
+        description: "Sales of Greenweez (one row per product_id in each orders_id)."
+        config:
+          loaded_at_field: "CAST(date_date AS TIMESTAMP)"
+          freshness:
+            warn_after: {count: 90, period: day}
         tests:
           - dbt_utils.unique_combination_of_columns:
-              combination_of_columns:
-                - orders_id
-                - pdt_id
-
+              arguments:
+                combination_of_columns:
+                  - orders_id
+                  - pdt_id
         columns:
           - name: date_date
-            description: date of purchase
-
+            description: "Date of purchase."
           - name: orders_id
-            description: foreign key to ship
+            description: "Foreign key to ship."
             tests:
               - not_null
               - relationships:
                   to: source('raw', 'ship')
                   field: orders_id
-
           - name: pdt_id
-            description: foreign key to product
+            description: "Foreign key to product."
             tests:
               - not_null
               - relationships:
                   to: source('raw', 'product')
                   field: products_id
-
           - name: revenue
-            description: the amount paid by the customer to purchase the product. revenue = quantity * selling_price
-
+            description: "revenue = quantity * selling_price"
           - name: quantity
-            description: the quantity of products purchased for a given order
+            description: "Quantity purchased."
 
       - name: product
         identifier: raw_gz_product
-        description: products of Greenweez
+        description: "Products of Greenweez."
         columns:
           - name: products_id
-            description: Primary key
-            tests:
-              - unique
-              - not_null
-
-          - name: purchase_price
-            description: the purchase price of the product
+            description: "Primary key."
+            tests: [unique, not_null]
+          - name: purchse_price
+            description: "Raw purchase price (will be cast/renamed in staging)."
 
       - name: ship
         identifier: raw_gz_ship
-        description: shipping data for Greenweez orders
+        description: "Shipping data for Greenweez orders."
         columns:
           - name: orders_id
-            description: Primary key
-            tests:
-              - unique
-              - not_null
-
+            description: "Primary key."
+            tests: [unique, not_null]
           - name: shipping_fee
-            description: the price the customer pays for shipping
-
+            description: "Shipping fee paid by customer."
           - name: logcost
-            description: the cost of preparing the parcel in the distribution centre/warehouse
-
+            description: "Warehouse/logistics preparation cost."
           - name: ship_cost
-            description: shipping cost paid by Greenweez to the carrier/logistics provider
+            description: "Carrier cost paid by Greenweez."
+
+      - name: adwords
+        identifier: raw_gz_adwords
+
+      - name: bing
+        identifier: raw_gz_bing
+
+      - name: criteo
+        identifier: raw_gz_criteo
+
+      - name: facebook
+        identifier: raw_gz_facebook
