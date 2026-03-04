@@ -2,8 +2,8 @@
 
 SELECT
   s.product_id,
-  s.date_date,
-  s.orders_id,
+  s.order_date,
+  s.order_id,
   s.revenue,
   s.quantity,
   p.purchase_price,
